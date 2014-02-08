@@ -20,15 +20,12 @@ package
 	import flash.utils.ByteArray;
 	import flash.utils.Dictionary;
 	
+	[SWF(width="800",height="450")]
 	public class FLVParser extends Sprite
 	{
-		private var _video:Video;
-		private var _nc:NetConnection;
-		private var _ns:NetStream;
 		private var _clipLoader:URLLoader;
 		
-		private var _result:ByteArray = new ByteArray();
-		
+//		private var _result:ByteArray = new ByteArray();
 		
 //		private var _url:String = "http://localhost/Beautiful Ones.flv";
 		private var _url:String = "BeautifulOnes_sample.flv";
@@ -56,10 +53,6 @@ package
 //			_urlInput.addEventListener(KeyboardEvent.KEY_DOWN, onUrlInputKeyDown);
 			this.addChild(_urlInput);
 			
-			_nc = new NetConnection();
-			_nc.addEventListener(NetStatusEvent.NET_STATUS, onNCNetStatus);
-			_nc.connect(null);
-			
 			_clipLoader = new URLLoader();
 			_clipLoader.dataFormat = URLLoaderDataFormat.BINARY;
 			_clipLoader.addEventListener(Event.COMPLETE, onClipLoadedComplete);
@@ -81,59 +74,7 @@ package
 			_clipLoader.load(new URLRequest(url));
 		}
 		
-		private function onNCNetStatus(event:NetStatusEvent):void
-		{
-			switch(event.info.code)
-			{
-				case "NetConnection.Connect.Success": //NetConnectionCode.CONNECT_SUCCESS :
-					connectStream();
-					break ;
-				case "NetStream.Play.StreamNotFound": //NetStreamCodes.NETSTREAM_PLAY_STREAMNOTFOUND :
-					throw new Error("StreamNotFound");
-					break ;
-			}
-		}
 		
-		private function connectStream():void
-		{
-			_ns = new NetStream(_nc);
-			_ns.client = {onMetaData:onMetaData};
-			_ns.addEventListener(NetStatusEvent.NET_STATUS, onNetStatus);
-			_ns.play(null);
-			
-			_video = new Video(672, 378);
-			_video.y = 40;
-			_video.attachNetStream(_ns);
-			this.addChild(_video);
-		}
-		
-		private function onMetaData(obj:Object):void
-		{
-			trace(obj);
-		}
-		
-		private function onNetStatus(e:NetStatusEvent):void
-		{
-//			trace('[AdaptiveStreamLoadTrait] netStatus: ' + e.info.code);
-			switch(e.info.code)
-			{
-				case 'NetStream.SeekStart.Notify':
-				case 'NetStream.Seek.Notify':
-//					trace("seek notify");
-					break;
-				case 'NetStream.Buffer.Flush':
-					break;
-				case 'NetStream.Buffer.Empty':
-//					checkStreamComplete();
-					break;
-				case 'NetStream.Buffer.Full':
-//					completeSeeking();
-					break;
-			}
-		}
-		
-		
-		private var _tsIndex:int = 0;
 		private function onClipLoadedComplete(event:Event):void
 		{
 			var bytes:ByteArray = _clipLoader.data as ByteArray;
@@ -215,7 +156,7 @@ package
 				milliseconds.   
 				*/
 				var time:uint = bytes.readUnsignedInt();
-				var timestamp:uint = time & 0xFF + time >> 8;
+				var timestamp:uint = ((time & 0xFF)<<24) + time >> 8;
 				trace("timestamp", timestamp);
 				
 				/*StreamID  UI24  Always 0.  */
