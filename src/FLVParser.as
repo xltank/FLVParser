@@ -473,6 +473,7 @@ package
 		{
 			getPair(tag);
 			
+			trace("tag.bytesAvailable", tag.bytesAvailable);
 			if(tag.bytesAvailable > 0)
 				parseMetaData(tag);
 		}
@@ -483,6 +484,14 @@ package
 				kType = tag.readUnsignedByte();
 			var kLen:uint = tag.readUnsignedShort();
 			var k:String = tag.readUTFBytes(kLen);
+			var v:* = getValue(tag);
+			trace("Pair", k + " : " + v);
+			metadata[k] = v ;
+			return {k:v} ;
+		}
+		
+		private function getValue(tag:ByteArray):*
+		{
 			var vType:uint = tag.readUnsignedByte();
 			var vSize:uint = 0;
 			var v:*;
@@ -508,9 +517,22 @@ package
 					v = tag.readUTFBytes(vSize);
 					trace("ScriptData", "String", v);
 					break;
-				case 3: // 3 = Object 
-					// TODO
+				case 3: // 3 = Object, same to ECMA Array, but no array length.
+					/* 
+					e.g. key(len, string) value(type, [size], [value]).
+					ObjectEndMarker  UI8 [3]  Shall be 0, 0, 9  
+					*/
 					trace("ScriptData", "Object");
+					v = "Object";
+					while(1)
+					{
+						var objEnd:uint = (tag.readUnsignedShort()<<8) + tag.readUnsignedByte();
+						if(objEnd == 9)
+							break;
+						else
+							tag.position -= 3;
+						getPair(tag, 2);
+					}
 					break;
 				case 4: // 4 = MovieClip (reserved, not supported) 
 					trace("ScriptData", "MovieClip (reserved, not supported)");
@@ -529,21 +551,30 @@ package
 					e.g. key(len, string) value(type, [size], [value]).
 					ObjectEndMarker  UI8 [3]  Shall be 0, 0, 9  
 					*/
-					trace("ScriptData", "ECMA array", "length", tag.readUnsignedInt());
+					var ECMAArrLen:int = tag.readUnsignedInt();
+					trace("ScriptData", "ECMA array", "length", ECMAArrLen);
 					v = "ECMA Array";
-					var arrayEnd:uint = tag.readUnsignedShort()<<8 + tag.readUnsignedByte();
-					while(arrayEnd != 9)
+					while(1)
 					{
-						tag.position -= 3;
+						var arrayEnd:uint = (tag.readUnsignedShort()<<8) + tag.readUnsignedByte();
+						if(arrayEnd == 9)
+							break;
+						else
+							tag.position -= 3;
 						getPair(tag, 2);
-						arrayEnd = tag.readUnsignedShort()<<8 + tag.readUnsignedByte();
 					}
 					break;
 				case 9: // 9 = Object end marker 
 					trace("ScriptData", "ObjectEndMarker");
 					break;
 				case 10: // 10 = Strict array 
-					trace("ScriptData", "Strict array");
+					var arrLen:int = tag.readUnsignedInt();
+					trace("ScriptData", "Strict array", "length", arrLen);
+					v = "Strict Array";
+					for(var i:int=0; i<arrLen; i++)
+					{
+						getValue(tag);
+					}
 					break;
 				case 11: // 11 = Date 
 					trace("ScriptData", "Date");
@@ -552,9 +583,8 @@ package
 					trace("ScriptData", "Long string");
 					break;
 			}
-			trace("ScriptData", k + " : " + v);
-			metadata[k] = v ;
-			return {k:v} ;
+//			trace("ScriptData", "value", v);
+			return v ;
 		}
 		
 		
